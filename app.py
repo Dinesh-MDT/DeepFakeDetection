@@ -339,13 +339,13 @@ def inject_css() -> None:
 
 @st.cache_resource
 def load_assets():
-    model_location = f"{MODEL_PATH.as_posix()}/" if MODEL_PATH.is_dir() else MODEL_PATH.as_posix()
+    model_location = MODEL_PATH.as_posix()
     model = load_model(model_location, compile=False)
     detector = MTCNN()
-    with (MODEL_PATH / "config.json").open("r", encoding="utf-8") as file:
-        config = json.load(file)
-    input_shape = config["config"]["layers"][0]["config"]["batch_shape"]
-    model_frames = int(input_shape[1]) if input_shape and len(input_shape) > 1 else 20
+
+    # Automatically get frame size from model
+    model_frames = model.input_shape[1]  # usually 20
+
     return model, detector, model_frames
 
 
@@ -612,9 +612,10 @@ def build_heatmap(scores: np.ndarray):
 
 
 def classify_prediction(probability: float):
-    label = "FAKE" if probability >= 0.5 else "REAL"
-    confidence = probability if label == "FAKE" else 1 - probability
-    return label, float(confidence)
+    if probability >= 0.5:
+        return "FAKE", probability
+    else:
+        return "REAL", 1 - probability
 
 
 def prepare_result(file_name: str, video_path: str, selected_mode: str, model, detector, model_frame_count: int):
